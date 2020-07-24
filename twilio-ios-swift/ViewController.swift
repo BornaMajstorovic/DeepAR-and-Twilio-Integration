@@ -50,7 +50,7 @@ class ViewController: UIViewController {
     }
     private var cameraController: CameraController!
     
-    private var accessToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIn0.eyJqdGkiOiJTS2M1ZGRiZTFhM2NkZTUzNWQwMmQ2ZGY2YzhjYzY2MTc4LTE1OTU1ODY0NTgiLCJpc3MiOiJTS2M1ZGRiZTFhM2NkZTUzNWQwMmQ2ZGY2YzhjYzY2MTc4Iiwic3ViIjoiQUNkYjQ0YzMxOTAxNjUyYmVkZTAxNDk3YjVlNDdiNWFmYiIsImV4cCI6MTU5NTU5MDA1OCwiZ3JhbnRzIjp7ImlkZW50aXR5IjoiemVkYXJhIiwidmlkZW8iOnsicm9vbSI6ImRlZXBBUiJ9fX0.9r5E9GrQPCDdJ3ZPXvnWcTV2qvtevvJiAPnjm05qP2o"
+    private var accessToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIn0.eyJqdGkiOiJTS2M1ZGRiZTFhM2NkZTUzNWQwMmQ2ZGY2YzhjYzY2MTc4LTE1OTU1OTAyMjMiLCJpc3MiOiJTS2M1ZGRiZTFhM2NkZTUzNWQwMmQ2ZGY2YzhjYzY2MTc4Iiwic3ViIjoiQUNkYjQ0YzMxOTAxNjUyYmVkZTAxNDk3YjVlNDdiNWFmYiIsImV4cCI6MTU5NTU5MzgyMywiZ3JhbnRzIjp7ImlkZW50aXR5IjoiemVkYXJhIiwidmlkZW8iOnsicm9vbSI6ImRlZXBBUiJ9fX0.NfO9hO5KLaCVPPfzOvJ2PQHJbp8qKw2_q2p4ddtcOAc"
     private var room: Room?
     internal weak var sink: VideoSink?
     private var frame: VideoFrame?
@@ -63,7 +63,7 @@ class ViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-       
+        
         setupArView()
         setupTwilio()
         addTargets()
@@ -87,9 +87,9 @@ class ViewController: UIViewController {
                                               height: Int32(arView.bounds.height))
         self.requestOutputFormat(format)
         start()
-
+        
         self.audioTrack = LocalAudioTrack()
-
+        
         let options = ConnectOptions(token: accessToken, block: { (builder) in
             if let videoTrack = self.videoTrack {
                 builder.videoTracks = [videoTrack]
@@ -99,7 +99,7 @@ class ViewController: UIViewController {
             }
             builder.roomName = "deepAR"
         })
-
+        
         self.room = TwilioVideoSDK.connect(options: options, delegate: self)
     }
     
@@ -133,16 +133,17 @@ class ViewController: UIViewController {
     }
     
     private func start(){
-
+        
         self.displayLink = CADisplayLink(target: self, selector: #selector(self.displayLinkDidFire))
         self.displayLink?.preferredFramesPerSecond = 15
-
+        
         displayLink?.add(to: RunLoop.main, forMode: RunLoop.Mode.common)
     }
     
     private func stop(){
         self.sink = nil
         self.displayLink?.invalidate()
+        arView.pause()
     }
     
     @objc
@@ -208,8 +209,8 @@ class ViewController: UIViewController {
         let dataProvider: CGDataProvider? = image.dataProvider
         let data: CFData? = dataProvider?.data
         let baseAddress = CFDataGetBytePtr(data!)
-
-       
+        
+        
         let unmanagedData = Unmanaged<CFData>.passRetained(data!)
         var pixelBuffer: CVPixelBuffer? = nil
         let status = CVPixelBufferCreateWithBytes(nil,
@@ -224,30 +225,30 @@ class ViewController: UIViewController {
                                                   unmanagedData.toOpaque(),
                                                   nil,
                                                   &pixelBuffer)
-
+        
         if (status != kCVReturnSuccess) {
             return nil;
         }
-
+        
         return pixelBuffer
     }
     
     @objc func displayLinkDidFire(timer: CADisplayLink) {
-         
+        
         let myImage = self.arView.snapshotView(afterScreenUpdates: true) as? UIImageView
-
+        
         guard let imageRef = myImage?.image?.cgImage else {
-               return
-           }
-
-           // A VideoSource must deliver CVPixelBuffers (and not CGImages) to a VideoSink.
-           if let pixelBuffer = self.copyPixelbufferFromCGImageProvider(image: imageRef) {
-               self.frame = VideoFrame(timeInterval: timer.timestamp,
-                                       buffer: pixelBuffer,
-                                       orientation: VideoOrientation.up)
-               self.sink!.onVideoFrame(self.frame!)
-           }
-       }
+            return
+        }
+        
+        // A VideoSource must deliver CVPixelBuffers (and not CGImages) to a VideoSink.
+        if let pixelBuffer = self.copyPixelbufferFromCGImageProvider(image: imageRef) {
+            self.frame = VideoFrame(timeInterval: timer.timestamp,
+                                    buffer: pixelBuffer,
+                                    orientation: VideoOrientation.up)
+            self.sink!.onVideoFrame(self.frame!)
+        }
+    }
     
 }
 
@@ -260,15 +261,15 @@ extension ViewController: ARViewDelegate {
     
     func frameAvailable(_ sampleBuffer: CMSampleBuffer!) {
         
-                guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
-                    print("*** NO BUFFER ERROR")
-                    return
-                }
+        let time = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
         
-                let time = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
-        
-
-                
+        if let pixelBuff = CMSampleBufferGetImageBuffer(sampleBuffer) {
+            self.frame = VideoFrame(timeInterval: CFTimeInterval(time.value),
+                                    buffer: pixelBuff,
+                                    orientation: VideoOrientation.up)
+            self.sink!.onVideoFrame(self.frame!)
+        }
+    
     }
     
     func didFinishVideoRecording(_ videoFilePath: String!) {}
@@ -335,7 +336,6 @@ extension ViewController: RoomDelegate {
 // MARK:- VideoSource
 extension ViewController: VideoSource {
     var isScreencast: Bool {
-        // We want fluid AR content, maintaining the original frame rate.
         return false
     }
     
