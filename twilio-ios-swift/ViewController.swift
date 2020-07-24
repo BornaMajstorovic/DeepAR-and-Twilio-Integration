@@ -45,11 +45,12 @@ class ViewController: UIViewController {
     private var buttonModePairs: [(UIButton, Mode)] = []
     private var currentMode: Mode! {
         didSet {
-            //            updateModeAppearance()
+            updateModeAppearance()
         }
     }
+    private var cameraController: CameraController!
     
-    private var accessToken = "TWILIO_ACCESS_TOKEN"
+    private var accessToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIn0.eyJqdGkiOiJTS2M1ZGRiZTFhM2NkZTUzNWQwMmQ2ZGY2YzhjYzY2MTc4LTE1OTU1ODY0NTgiLCJpc3MiOiJTS2M1ZGRiZTFhM2NkZTUzNWQwMmQ2ZGY2YzhjYzY2MTc4Iiwic3ViIjoiQUNkYjQ0YzMxOTAxNjUyYmVkZTAxNDk3YjVlNDdiNWFmYiIsImV4cCI6MTU5NTU5MDA1OCwiZ3JhbnRzIjp7ImlkZW50aXR5IjoiemVkYXJhIiwidmlkZW8iOnsicm9vbSI6ImRlZXBBUiJ9fX0.9r5E9GrQPCDdJ3ZPXvnWcTV2qvtevvJiAPnjm05qP2o"
     private var room: Room?
     internal weak var sink: VideoSink?
     private var frame: VideoFrame?
@@ -62,16 +63,54 @@ class ViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Do any additional setup after loading the view.
+       
+        setupArView()
+        setupTwilio()
+        addTargets()
+        
+        buttonModePairs = [(masksButton, .masks), (effectsButton, .effects), (filtersButton, .filters)]
+        currentMode = .masks
+        
+    }
+    
+    deinit {
+        stop()
     }
     
     // MARK: - Private Methods -
+    private func setupTwilio(){
+        self.videoTrack = LocalVideoTrack(source: self)
+        let format = VideoFormat()
+        format.frameRate = 15
+        format.pixelFormat = PixelFormat.format32BGRA
+        format.dimensions = CMVideoDimensions(width: Int32(arView.bounds.width),
+                                              height: Int32(arView.bounds.height))
+        self.requestOutputFormat(format)
+        start()
+
+        self.audioTrack = LocalAudioTrack()
+
+        let options = ConnectOptions(token: accessToken, block: { (builder) in
+            if let videoTrack = self.videoTrack {
+                builder.videoTracks = [videoTrack]
+            }
+            if let audioTrack = self.audioTrack {
+                builder.audioTracks = [audioTrack]
+            }
+            builder.roomName = "deepAR"
+        })
+
+        self.room = TwilioVideoSDK.connect(options: options, delegate: self)
+    }
     
     private func setupArView() {
-        arView.setLicenseKey("your_license_key_goes_here")
+        arView.setLicenseKey("f64c4138f9309686ac9fceed46031639629f54b669cae716ca089d0c207c77059703f1e997dbd04d")
         arView.delegate = self
+        cameraController = CameraController()
+        cameraController.arview = arView
+        
         arView.initialize()
-        arView.isHidden = true
+        cameraController.startCamera()
     }
     
     private func addTargets() {
@@ -83,23 +122,32 @@ class ViewController: UIViewController {
         filtersButton.addTarget(self, action: #selector(didTapFiltersButton), for: .touchUpInside)
     }
     
+    private func updateModeAppearance() {
+        buttonModePairs.forEach { (button, mode) in
+            button.isSelected = mode == currentMode
+        }
+    }
+    
     private func switchMode(_ path: String?) {
         arView.switchEffect(withSlot: currentMode.rawValue, path: path)
     }
     
     private func start(){
-        
+
+        self.displayLink = CADisplayLink(target: self, selector: #selector(self.displayLinkDidFire))
+        self.displayLink?.preferredFramesPerSecond = 15
+
+        displayLink?.add(to: RunLoop.main, forMode: RunLoop.Mode.common)
     }
     
     private func stop(){
-        
+        self.sink = nil
+        self.displayLink?.invalidate()
     }
     
     @objc
     private func didTapSwitchCameraButton() {
-        //        let position: AVCaptureDevice.Position = arView.getCameraPosition() == .back ? .front : .back
-        //        arView.switchCamera(position)
-        //        camera controleru je sad to
+        cameraController.position = cameraController.position == .back ? .front : .back
     }
     
     
@@ -156,6 +204,50 @@ class ViewController: UIViewController {
         currentMode = .filters
     }
     
+    func copyPixelbufferFromCGImageProvider(image: CGImage) -> CVPixelBuffer? {
+        let dataProvider: CGDataProvider? = image.dataProvider
+        let data: CFData? = dataProvider?.data
+        let baseAddress = CFDataGetBytePtr(data!)
+
+       
+        let unmanagedData = Unmanaged<CFData>.passRetained(data!)
+        var pixelBuffer: CVPixelBuffer? = nil
+        let status = CVPixelBufferCreateWithBytes(nil,
+                                                  image.width,
+                                                  image.height,
+                                                  PixelFormat.format32BGRA.rawValue,
+                                                  UnsafeMutableRawPointer( mutating: baseAddress!),
+                                                  image.bytesPerRow,
+                                                  { releaseContext, baseAddress in
+                                                    let contextData = Unmanaged<CFData>.fromOpaque(releaseContext!)
+                                                    contextData.release() },
+                                                  unmanagedData.toOpaque(),
+                                                  nil,
+                                                  &pixelBuffer)
+
+        if (status != kCVReturnSuccess) {
+            return nil;
+        }
+
+        return pixelBuffer
+    }
+    
+    @objc func displayLinkDidFire(timer: CADisplayLink) {
+         
+        let myImage = self.arView.snapshotView(afterScreenUpdates: true) as? UIImageView
+
+        guard let imageRef = myImage?.image?.cgImage else {
+               return
+           }
+
+           // A VideoSource must deliver CVPixelBuffers (and not CGImages) to a VideoSink.
+           if let pixelBuffer = self.copyPixelbufferFromCGImageProvider(image: imageRef) {
+               self.frame = VideoFrame(timeInterval: timer.timestamp,
+                                       buffer: pixelBuffer,
+                                       orientation: VideoOrientation.up)
+               self.sink!.onVideoFrame(self.frame!)
+           }
+       }
     
 }
 
@@ -168,18 +260,15 @@ extension ViewController: ARViewDelegate {
     
     func frameAvailable(_ sampleBuffer: CMSampleBuffer!) {
         
-        //        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
-        //            print("*** NO BUFFER ERROR")
-        //            return
-        //        }
-        //
-        //        let time = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
-        //
-        //        let videoFrame = AgoraVideoFrame()
-        //        videoFrame.format = 12
-        //        videoFrame.textureBuf = pixelBuffer
-        //        videoFrame.time = time
-        //        agoraKit?.pushExternalVideoFrame(videoFrame)
+                guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
+                    print("*** NO BUFFER ERROR")
+                    return
+                }
+        
+                let time = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+        
+
+                
     }
     
     func didFinishVideoRecording(_ videoFilePath: String!) {}

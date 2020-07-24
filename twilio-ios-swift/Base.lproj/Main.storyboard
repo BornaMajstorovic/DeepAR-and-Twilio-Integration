@@ -17,7 +17,7 @@
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="oZs-gk-fo3">
-                                <rect key="frame" x="20" y="64" width="50" height="50"/>
+                                <rect key="frame" x="5" y="64" width="50" height="50"/>
                                 <constraints>
                                     <constraint firstAttribute="width" constant="50" id="Itf-ld-9pl"/>
                                     <constraint firstAttribute="height" constant="50" id="Mas-Js-p4n"/>
@@ -54,25 +54,25 @@
                                     </button>
                                 </subviews>
                             </stackView>
-                            <stackView opaque="NO" contentMode="scaleToFill" distribution="fillProportionally" spacing="40" translatesAutoresizingMaskIntoConstraints="NO" id="1Ge-r4-iT4">
-                                <rect key="frame" x="92" y="798" width="230" height="44"/>
+                            <stackView opaque="NO" contentMode="scaleToFill" distribution="fillEqually" spacing="40" translatesAutoresizingMaskIntoConstraints="NO" id="1Ge-r4-iT4">
+                                <rect key="frame" x="62" y="798" width="290" height="44"/>
                                 <subviews>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="CNQ-yP-4s8">
-                                        <rect key="frame" x="0.0" y="0.0" width="49" height="44"/>
+                                        <rect key="frame" x="0.0" y="0.0" width="70" height="44"/>
                                         <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                         <state key="normal" title="Masks">
                                             <color key="titleColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         </state>
                                     </button>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="y48-YJ-lSx">
-                                        <rect key="frame" x="89" y="0.0" width="54" height="44"/>
+                                        <rect key="frame" x="110" y="0.0" width="70" height="44"/>
                                         <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                         <state key="normal" title="Effects">
                                             <color key="titleColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                         </state>
                                     </button>
                                     <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="Gok-vR-Yue">
-                                        <rect key="frame" x="183" y="0.0" width="47" height="44"/>
+                                        <rect key="frame" x="220" y="0.0" width="70" height="44"/>
                                         <fontDescription key="fontDescription" type="system" pointSize="17"/>
                                         <state key="normal" title="Filters">
                                             <color key="titleColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
@@ -84,9 +84,10 @@
                                 </constraints>
                             </stackView>
                             <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="FV9-dm-Rwu" customClass="ARView">
-                                <rect key="frame" x="270" y="64" width="124" height="165.5"/>
+                                <rect key="frame" x="94" y="64" width="300" height="400"/>
                                 <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
                                 <constraints>
+                                    <constraint firstAttribute="height" constant="400" id="ab3-ia-P2u"/>
                                     <constraint firstAttribute="width" secondItem="FV9-dm-Rwu" secondAttribute="height" multiplier="3:4" id="v8k-I6-uL6"/>
                                 </constraints>
                             </view>
@@ -94,12 +95,11 @@
                         <color key="backgroundColor" cocoaTouchSystemColor="lightTextColor"/>
                         <constraints>
                             <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="H7h-fh-D2d" secondAttribute="trailing" constant="20" id="3as-mg-R9G"/>
-                            <constraint firstItem="oZs-gk-fo3" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="20" id="5uh-k7-TQf"/>
+                            <constraint firstItem="oZs-gk-fo3" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="5" id="5uh-k7-TQf"/>
                             <constraint firstItem="FV9-dm-Rwu" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" constant="20" id="6CN-ow-3RT"/>
-                            <constraint firstItem="1Ge-r4-iT4" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="92" id="CxD-c2-uB0"/>
+                            <constraint firstItem="1Ge-r4-iT4" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="62" id="CxD-c2-uB0"/>
                             <constraint firstItem="oZs-gk-fo3" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" constant="20" id="JAE-24-GGd"/>
-                            <constraint firstAttribute="bottom" secondItem="FV9-dm-Rwu" secondAttribute="bottom" constant="666.5" id="dRZ-jg-sGS"/>
-                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="1Ge-r4-iT4" secondAttribute="trailing" constant="92" id="rA9-Hs-TwB"/>
+                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="1Ge-r4-iT4" secondAttribute="trailing" constant="62" id="rA9-Hs-TwB"/>
                             <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="FV9-dm-Rwu" secondAttribute="trailing" constant="20" id="tHD-ly-HHv"/>
                             <constraint firstItem="H7h-fh-D2d" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="20" id="wRr-KL-vUb"/>
                             <constraint firstItem="6Tk-OE-BBY" firstAttribute="bottom" secondItem="H7h-fh-D2d" secondAttribute="bottom" constant="60" id="y0b-A7-ixv"/>
