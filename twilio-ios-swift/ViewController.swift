@@ -14,18 +14,13 @@ import TwilioVideo
 class ViewController: UIViewController, VideoViewDelegate {
     
     // MARK: - IBOutlets -
-    
-    @IBOutlet weak var switchCameraButton: UIButton!
-    @IBOutlet weak var masksButton: UIButton!
-    @IBOutlet weak var effectsButton: UIButton!
-    @IBOutlet weak var filtersButton: UIButton!
-    @IBOutlet weak var previousButton: UIButton!
-    @IBOutlet weak var nextButton: UIButton!
-    
     @IBOutlet weak var arView: ARView!
-
-    @IBOutlet weak var remoteVideo: VideoView!
-    
+    @IBOutlet weak var connectButton: UIButton!
+    @IBOutlet weak var disconnectButton: UIButton!
+    @IBOutlet weak var roomTF: UITextField!
+    @IBOutlet weak var micButton: UIButton!
+    @IBOutlet weak var messageLabel: UILabel!
+    @IBOutlet weak var roomLabel: UILabel!
     
     // MARK: - Private properties -
     
@@ -45,14 +40,10 @@ class ViewController: UIViewController, VideoViewDelegate {
     }
     
     private var buttonModePairs: [(UIButton, Mode)] = []
-    private var currentMode: Mode! {
-        didSet {
-            updateModeAppearance()
-        }
-    }
+    private var currentMode: Mode!
     private var cameraController: CameraController!
     
-    private var accessToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIn0.eyJqdGkiOiJTS2M1ZGRiZTFhM2NkZTUzNWQwMmQ2ZGY2YzhjYzY2MTc4LTE1OTU4MzY0MzUiLCJpc3MiOiJTS2M1ZGRiZTFhM2NkZTUzNWQwMmQ2ZGY2YzhjYzY2MTc4Iiwic3ViIjoiQUNkYjQ0YzMxOTAxNjUyYmVkZTAxNDk3YjVlNDdiNWFmYiIsImV4cCI6MTU5NTg0MDAzNSwiZ3JhbnRzIjp7ImlkZW50aXR5IjoiYmJiYiIsInZpZGVvIjp7InJvb20iOiJkZWVwQVIifX19.oHZAwyKQwsKi100s1SnEjJS315H2bit1JQGg5o16-mI"
+    private var accessToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIn0.eyJqdGkiOiJTS2M1ZGRiZTFhM2NkZTUzNWQwMmQ2ZGY2YzhjYzY2MTc4LTE1OTU4NDgxNjMiLCJpc3MiOiJTS2M1ZGRiZTFhM2NkZTUzNWQwMmQ2ZGY2YzhjYzY2MTc4Iiwic3ViIjoiQUNkYjQ0YzMxOTAxNjUyYmVkZTAxNDk3YjVlNDdiNWFmYiIsImV4cCI6MTU5NTg1MTc2MywiZ3JhbnRzIjp7ImlkZW50aXR5Ijoic2RhZCIsInZpZGVvIjp7InJvb20iOiJkZWVwQVIifX19.eIMD6EctQ_ZblrgqsXdnC9T_ig7Ez5hM_iztONAe2Ss"
     private var room: Room?
     internal weak var sink: VideoSink?
     private var frame: VideoFrame?
@@ -70,19 +61,27 @@ class ViewController: UIViewController, VideoViewDelegate {
         
         setupArView()
         setupTwilio()
-        addTargets()
-        
-        buttonModePairs = [(masksButton, .masks), (effectsButton, .effects), (filtersButton, .filters)]
-        currentMode = .masks
         
     }
     
     deinit {
         stop()
     }
+    @IBAction func connectTapped(_ sender: UIButton) {
+    }
+    @IBAction func disconnectTapped(_ sender: Any) {
+    }
+    @IBAction func micTapped(_ sender: Any) {
+    }
     
     // MARK: - Private Methods -
     private func setupTwilio(){
+        
+   
+        self.micButton.isHidden = false
+        self.disconnectButton.isHidden = false
+
+        
         self.videoTrack = LocalVideoTrack(source: self)
         let format = VideoFormat()
         format.frameRate = 15
@@ -117,24 +116,18 @@ class ViewController: UIViewController, VideoViewDelegate {
         cameraController.startCamera()
     }
     
-    private func addTargets() {
-        switchCameraButton.addTarget(self, action: #selector(didTapSwitchCameraButton), for: .touchUpInside)
-        previousButton.addTarget(self, action: #selector(didTapPreviousButton), for: .touchUpInside)
-        nextButton.addTarget(self, action: #selector(didTapNextButton), for: .touchUpInside)
-        masksButton.addTarget(self, action: #selector(didTapMasksButton), for: .touchUpInside)
-        effectsButton.addTarget(self, action: #selector(didTapEffectsButton), for: .touchUpInside)
-        filtersButton.addTarget(self, action: #selector(didTapFiltersButton), for: .touchUpInside)
+    func showRoomUI(inRoom: Bool) {
+        self.connectButton.isHidden = inRoom
+        self.roomTF.isHidden = inRoom
+        self.roomLabel.isHidden = inRoom
+        self.roomLabel.isHidden = inRoom
+        self.micButton.isHidden = !inRoom
+        self.disconnectButton.isHidden = !inRoom
+        
+        // Show / hide the automatic home indicator on modern iPhones.
+        self.setNeedsUpdateOfHomeIndicatorAutoHidden()
     }
     
-    private func updateModeAppearance() {
-        buttonModePairs.forEach { (button, mode) in
-            button.isSelected = mode == currentMode
-        }
-    }
-    
-    private func switchMode(_ path: String?) {
-        arView.switchEffect(withSlot: currentMode.rawValue, path: path)
-    }
     
     private func start(){
         
@@ -151,64 +144,6 @@ class ViewController: UIViewController, VideoViewDelegate {
         arView.pause()
     }
     
-    @objc
-    private func didTapSwitchCameraButton() {
-        cameraController.position = cameraController.position == .back ? .front : .back
-    }
-    
-    
-    @objc
-    private func didTapPreviousButton() {
-        var path: String?
-        
-        switch currentMode! {
-        case .effects:
-            effectIndex = (effectIndex - 1 < 0) ? (effectPaths.count - 1) : (effectIndex - 1)
-            path = effectPaths[effectIndex]
-        case .masks:
-            maskIndex = (maskIndex - 1 < 0) ? (maskPaths.count - 1) : (maskIndex - 1)
-            path = maskPaths[maskIndex]
-        case .filters:
-            filterIndex = (filterIndex - 1 < 0) ? (filterPaths.count - 1) : (filterIndex - 1)
-            path = filterPaths[filterIndex]
-        }
-        
-        switchMode(path)
-    }
-    
-    @objc
-    private func didTapNextButton() {
-        var path: String?
-        
-        switch currentMode! {
-        case .effects:
-            effectIndex = (effectIndex + 1 > effectPaths.count - 1) ? 0 : (effectIndex + 1)
-            path = effectPaths[effectIndex]
-        case .masks:
-            maskIndex = (maskIndex + 1 > maskPaths.count - 1) ? 0 : (maskIndex + 1)
-            path = maskPaths[maskIndex]
-        case .filters:
-            filterIndex = (filterIndex + 1 > filterPaths.count - 1) ? 0 : (filterIndex + 1)
-            path = filterPaths[filterIndex]
-        }
-        
-        switchMode(path)
-    }
-    
-    @objc
-    private func didTapMasksButton() {
-        currentMode = .masks
-    }
-    
-    @objc
-    private func didTapEffectsButton() {
-        currentMode = .effects
-    }
-    
-    @objc
-    private func didTapFiltersButton() {
-        currentMode = .filters
-    }
     
     func copyPixelbufferFromCGImageProvider(image: CGImage) -> CVPixelBuffer? {
         let dataProvider: CGDataProvider? = image.dataProvider
@@ -307,14 +242,14 @@ class ViewController: UIViewController, VideoViewDelegate {
             if let subscribedVideoTrack = publication.remoteTrack,
                 publication.isTrackSubscribed {
                 //setupRemoteVideoView()
-                subscribedVideoTrack.addRenderer(self.remoteVideo)
+                subscribedVideoTrack.addRenderer(self.remoteView!)
                 self.remoteParticipant = participant
                 return true
             }
         }
         return false
     }
-
+    
     func renderRemoteParticipants(participants : Array<RemoteParticipant>) {
         for participant in participants {
             // Find the first renderable track.
@@ -329,15 +264,17 @@ class ViewController: UIViewController, VideoViewDelegate {
         if self.remoteParticipant != nil {
             self.remoteView?.removeFromSuperview()
             self.remoteView = nil
-            self.remoteVideo.removeFromSuperview()
-            self.remoteVideo = nil
             self.remoteParticipant = nil
         }
     }
     
     func videoViewDimensionsDidChange(view: VideoView, dimensions: CMVideoDimensions) {
-           self.view.setNeedsLayout()
-       }
+        self.view.setNeedsLayout()
+    }
+    func logMessage(messageText: String) {
+        NSLog(messageText)
+        messageLabel.text = messageText
+    }
     
 }
 
@@ -358,7 +295,7 @@ extension ViewController: ARViewDelegate {
                                     orientation: VideoOrientation.up)
             self.sink!.onVideoFrame(self.frame!)
         }
-    
+        
     }
     
     func didFinishVideoRecording(_ videoFilePath: String!) {}
@@ -367,7 +304,12 @@ extension ViewController: ARViewDelegate {
     
     func didTakeScreenshot(_ screenshot: UIImage!) {}
     
-    func didInitialize() {}
+    func didInitialize() {
+        currentMode = .masks
+        let path = maskPaths[4]
+        arView.switchEffect(withSlot: currentMode.rawValue, path: path)
+        
+    }
     
     func faceVisiblityDidChange(_ faceVisible: Bool) {
     }
@@ -376,8 +318,12 @@ extension ViewController: ARViewDelegate {
 // MARK:- RoomDelegate
 extension ViewController: RoomDelegate {
     func roomDidConnect(room: Room) {
-        print("Connected to room \(room.name) as \(room.localParticipant?.identity ?? "")")
-    }
+        logMessage(messageText: "Connected to room \(room.name) as \(room.localParticipant?.identity ?? "")")
+        
+        // This example only renders 1 RemoteVideoTrack at a time. Listen for all events to decide which track to render.
+        for remoteParticipant in room.remoteParticipants {
+            remoteParticipant.delegate = self
+        }    }
     
     func roomDidFailToConnect(room: Room, error: Error) {
         print("Failed to connect to a Room: \(error).")
@@ -395,30 +341,30 @@ extension ViewController: RoomDelegate {
         }
     }
     
-    func roomDidDisconnect(room: Room, error: Error?) {
-        if let error = error {
-            print("Disconnected from the Room with an error:", error)
-        } else {
-            print("Disconnected from the Room.")
-        }
-        self.room = nil
-        self.setNeedsUpdateOfHomeIndicatorAutoHidden()
-    }
+    //    func roomDidDisconnect(room: Room, error: Error?) {
+    //        logMessage(messageText: "Disconnected from room \(room.name), error = \(String(describing: error))")
+    //
+    //        self.cleanupRemoteParticipant()
+    //        self.room = nil
+    //
+    //        self.showRoomUI(inRoom: false)
+    //    }
     
     func roomIsReconnecting(room: Room, error: Error) {
-        print("Reconnecting to room \(room.name), error = \(String(describing: error))")
+        logMessage(messageText: "Reconnecting to room \(room.name), error = \(String(describing: error))")
     }
     
     func roomDidReconnect(room: Room) {
-        print("Reconnected to room \(room.name)")
+        logMessage(messageText: "Reconnected to room \(room.name)")
     }
     
     func participantDidConnect(room: Room, participant: RemoteParticipant) {
-        print("Participant \(participant.identity) connected to \(room.name).")
-    }
+        participant.delegate = self
+        
+        logMessage(messageText: "Participant \(participant.identity) connected with \(participant.remoteAudioTracks.count) audio and \(participant.remoteVideoTracks.count) video tracks")    }
     
     func participantDidDisconnect(room: Room, participant: RemoteParticipant) {
-        print("Participant \(participant.identity) disconnected from \(room.name).")
+        logMessage(messageText: "Room \(room.name), Participant \(participant.identity) disconnected")
     }
 }
 
@@ -441,44 +387,46 @@ extension ViewController : RemoteParticipantDelegate {
     func remoteParticipantDidPublishVideoTrack(participant: RemoteParticipant, publication: RemoteVideoTrackPublication) {
         // Remote Participant has offered to share the video Track.
         
-        print( "Participant \(participant.identity) published video track")
+        logMessage(messageText: "Participant \(participant.identity) published \(publication.trackName) video track")
     }
-
+    
     func remoteParticipantDidUnpublishVideoTrack(participant: RemoteParticipant, publication: RemoteVideoTrackPublication) {
         // Remote Participant has stopped sharing the video Track.
         
-        print( "Participant \(participant.identity) unpublished video track")
+        logMessage(messageText: "Participant \(participant.identity) unpublished \(publication.trackName) video track")
     }
     
     func remoteParticipantDidPublishAudioTrack(participant: RemoteParticipant, publication: RemoteAudioTrackPublication) {
         // Remote Participant has offered to share the audio Track.
         
-        print("Participant \(participant.identity) published audio track")
+        logMessage(messageText: "Participant \(participant.identity) published \(publication.trackName) audio track")
     }
-
+    
     func remoteParticipantDidUnpublishAudioTrack(participant: RemoteParticipant, publication: RemoteAudioTrackPublication) {
-        print("Participant \(participant.identity) unpublished audio track")
+        // Remote Participant has stopped sharing the audio Track.
+        
+        logMessage(messageText: "Participant \(participant.identity) unpublished \(publication.trackName) audio track")
     }
     
     func didSubscribeToVideoTrack(videoTrack: RemoteVideoTrack, publication: RemoteVideoTrackPublication, participant: RemoteParticipant) {
         // The LocalParticipant is subscribed to the RemoteParticipant's video Track. Frames will begin to arrive now.
-
-        print("Subscribed to \(publication.trackName) video track for Participant \(participant.identity)")
-
-        if (self.remoteVideo == nil) {
+        
+        logMessage(messageText: "Subscribed to \(publication.trackName) video track for Participant \(participant.identity)")
+        
+        if (self.remoteParticipant == nil) {
             _ = renderRemoteParticipant(participant: participant)
         }
     }
-
+    
     func didUnsubscribeFromVideoTrack(videoTrack: RemoteVideoTrack, publication: RemoteVideoTrackPublication, participant: RemoteParticipant) {
         // We are unsubscribed from the remote Participant's video Track. We will no longer receive the
         // remote Participant's video.
-
-        print("Unsubscribed from \(publication.trackName) video track for Participant \(participant.identity)")
-
+        
+        logMessage(messageText: "Unsubscribed from \(publication.trackName) video track for Participant \(participant.identity)")
+        
         if self.remoteParticipant == participant {
             cleanupRemoteParticipant()
-
+            
             // Find another Participant video to render, if possible.
             if var remainingParticipants = room?.remoteParticipants,
                 let index = remainingParticipants.index(of: participant) {
@@ -487,42 +435,42 @@ extension ViewController : RemoteParticipantDelegate {
             }
         }
     }
-
+    
     func didSubscribeToAudioTrack(audioTrack: RemoteAudioTrack, publication: RemoteAudioTrackPublication, participant: RemoteParticipant) {
         // We are subscribed to the remote Participant's audio Track. We will start receiving the
         // remote Participant's audio now.
         
-        print("Subscribed to audio track for Participant \(participant.identity)")
+        logMessage(messageText: "Subscribed to \(publication.trackName) audio track for Participant \(participant.identity)")
     }
     
     func didUnsubscribeFromAudioTrack(audioTrack: RemoteAudioTrack, publication: RemoteAudioTrackPublication, participant: RemoteParticipant) {
         // We are unsubscribed from the remote Participant's audio Track. We will no longer receive the
         // remote Participant's audio.
         
-        print("Unsubscribed from audio track for Participant \(participant.identity)")
+        logMessage(messageText: "Unsubscribed from \(publication.trackName) audio track for Participant \(participant.identity)")
     }
     
     func remoteParticipantDidEnableVideoTrack(participant: RemoteParticipant, publication: RemoteVideoTrackPublication) {
-        print( "Participant \(participant.identity) enabled video track")
+        logMessage(messageText: "Participant \(participant.identity) enabled \(publication.trackName) video track")
     }
     
     func remoteParticipantDidDisableVideoTrack(participant: RemoteParticipant, publication: RemoteVideoTrackPublication) {
-        print("Participant \(participant.identity) disabled video track")
+        logMessage(messageText: "Participant \(participant.identity) disabled \(publication.trackName) video track")
     }
     
     func remoteParticipantDidEnableAudioTrack(participant: RemoteParticipant, publication: RemoteAudioTrackPublication) {
-        print("Participant \(participant.identity) enabled audio track")
+        logMessage(messageText: "Participant \(participant.identity) enabled \(publication.trackName) audio track")
     }
     
     func remoteParticipantDidDisableAudioTrack(participant: RemoteParticipant, publication: RemoteAudioTrackPublication) {
-        print("Participant \(participant.identity) disabled audio track")
+        logMessage(messageText: "Participant \(participant.identity) disabled \(publication.trackName) audio track")
     }
-
+    
     func didFailToSubscribeToAudioTrack(publication: RemoteAudioTrackPublication, error: Error, participant: RemoteParticipant) {
-        print("FailedToSubscribe \(publication.trackName) audio track, error = \(String(describing: error))")
+        logMessage(messageText: "FailedToSubscribe \(publication.trackName) audio track, error = \(String(describing: error))")
     }
-
+    
     func didFailToSubscribeToVideoTrack(publication: RemoteVideoTrackPublication, error: Error, participant: RemoteParticipant) {
-        print("FailedToSubscribe \(publication.trackName) video track, error = \(String(describing: error))")
+        logMessage(messageText: "FailedToSubscribe \(publication.trackName) video track, error = \(String(describing: error))")
     }
 }
