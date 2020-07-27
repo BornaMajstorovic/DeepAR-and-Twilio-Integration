@@ -91,14 +91,24 @@
                                     <constraint firstAttribute="width" secondItem="FV9-dm-Rwu" secondAttribute="height" multiplier="3:4" id="v8k-I6-uL6"/>
                                 </constraints>
                             </view>
+                            <view contentMode="scaleAspectFit" translatesAutoresizingMaskIntoConstraints="NO" id="D6i-ye-Ugo" customClass="VideoView">
+                                <rect key="frame" x="274" y="534" width="120" height="160"/>
+                                <color key="backgroundColor" systemColor="systemYellowColor" red="1" green="0.80000000000000004" blue="0.0" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                <constraints>
+                                    <constraint firstAttribute="height" constant="160" id="ttw-Ux-P5s"/>
+                                    <constraint firstAttribute="width" constant="120" id="wss-b3-bHk"/>
+                                </constraints>
+                            </view>
                         </subviews>
                         <color key="backgroundColor" cocoaTouchSystemColor="lightTextColor"/>
                         <constraints>
                             <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="H7h-fh-D2d" secondAttribute="trailing" constant="20" id="3as-mg-R9G"/>
                             <constraint firstItem="oZs-gk-fo3" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="5" id="5uh-k7-TQf"/>
                             <constraint firstItem="FV9-dm-Rwu" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" constant="20" id="6CN-ow-3RT"/>
+                            <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="D6i-ye-Ugo" secondAttribute="trailing" constant="20" id="CW6-gs-GaV"/>
                             <constraint firstItem="1Ge-r4-iT4" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="62" id="CxD-c2-uB0"/>
                             <constraint firstItem="oZs-gk-fo3" firstAttribute="top" secondItem="6Tk-OE-BBY" secondAttribute="top" constant="20" id="JAE-24-GGd"/>
+                            <constraint firstItem="D6i-ye-Ugo" firstAttribute="top" secondItem="FV9-dm-Rwu" secondAttribute="bottom" constant="70" id="PFP-43-OaY"/>
                             <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="1Ge-r4-iT4" secondAttribute="trailing" constant="62" id="rA9-Hs-TwB"/>
                             <constraint firstItem="6Tk-OE-BBY" firstAttribute="trailing" secondItem="FV9-dm-Rwu" secondAttribute="trailing" constant="20" id="tHD-ly-HHv"/>
                             <constraint firstItem="H7h-fh-D2d" firstAttribute="leading" secondItem="6Tk-OE-BBY" secondAttribute="leading" constant="20" id="wRr-KL-vUb"/>
@@ -114,12 +124,13 @@
                         <outlet property="masksButton" destination="CNQ-yP-4s8" id="bpc-Uy-dFt"/>
                         <outlet property="nextButton" destination="KNE-me-Hc9" id="gyL-c8-WH2"/>
                         <outlet property="previousButton" destination="Nep-lg-lil" id="1aa-p2-CQj"/>
+                        <outlet property="remoteVideo" destination="D6i-ye-Ugo" id="4C0-7B-MsL"/>
                         <outlet property="switchCameraButton" destination="oZs-gk-fo3" id="f1P-Tt-qnN"/>
                     </connections>
                 </viewController>
                 <placeholder placeholderIdentifier="IBFirstResponder" id="dkx-z0-nzr" sceneMemberID="firstResponder"/>
             </objects>
-            <point key="canvasLocation" x="757" y="125"/>
+            <point key="canvasLocation" x="284" y="105"/>
         </scene>
     </scenes>
     <resources>

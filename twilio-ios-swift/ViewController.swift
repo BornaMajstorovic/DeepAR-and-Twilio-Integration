@@ -11,7 +11,7 @@ import DeepAR
 import TwilioVideo
 
 
-class ViewController: UIViewController {
+class ViewController: UIViewController, VideoViewDelegate {
     
     // MARK: - IBOutlets -
     
@@ -23,6 +23,8 @@ class ViewController: UIViewController {
     @IBOutlet weak var nextButton: UIButton!
     
     @IBOutlet weak var arView: ARView!
+
+    @IBOutlet weak var remoteVideo: VideoView!
     
     
     // MARK: - Private properties -
@@ -50,7 +52,7 @@ class ViewController: UIViewController {
     }
     private var cameraController: CameraController!
     
-    private var accessToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIn0.eyJqdGkiOiJTS2M1ZGRiZTFhM2NkZTUzNWQwMmQ2ZGY2YzhjYzY2MTc4LTE1OTU1OTY0NTAiLCJpc3MiOiJTS2M1ZGRiZTFhM2NkZTUzNWQwMmQ2ZGY2YzhjYzY2MTc4Iiwic3ViIjoiQUNkYjQ0YzMxOTAxNjUyYmVkZTAxNDk3YjVlNDdiNWFmYiIsImV4cCI6MTU5NTYwMDA1MCwiZ3JhbnRzIjp7ImlkZW50aXR5IjoiemVkYXJhIiwidmlkZW8iOnsicm9vbSI6ImRlZXBBUiJ9fX0.0-H2nSCO4GrkFK1EDItupNEXN3-iiHWtoCG56qLMGZk"
+    private var accessToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIn0.eyJqdGkiOiJTS2M1ZGRiZTFhM2NkZTUzNWQwMmQ2ZGY2YzhjYzY2MTc4LTE1OTU4MzY0MzUiLCJpc3MiOiJTS2M1ZGRiZTFhM2NkZTUzNWQwMmQ2ZGY2YzhjYzY2MTc4Iiwic3ViIjoiQUNkYjQ0YzMxOTAxNjUyYmVkZTAxNDk3YjVlNDdiNWFmYiIsImV4cCI6MTU5NTg0MDAzNSwiZ3JhbnRzIjp7ImlkZW50aXR5IjoiYmJiYiIsInZpZGVvIjp7InJvb20iOiJkZWVwQVIifX19.oHZAwyKQwsKi100s1SnEjJS315H2bit1JQGg5o16-mI"
     private var room: Room?
     internal weak var sink: VideoSink?
     private var frame: VideoFrame?
@@ -58,6 +60,8 @@ class ViewController: UIViewController {
     
     private var videoTrack: LocalVideoTrack?
     private var audioTrack: LocalAudioTrack?
+    private var remoteParticipant: RemoteParticipant?
+    private var remoteView: VideoView?
     
     // MARK: - Lifecycle -
     
@@ -143,6 +147,7 @@ class ViewController: UIViewController {
     private func stop(){
         self.sink = nil
         self.displayLink?.invalidate()
+        self.cleanupRemoteParticipant()
         arView.pause()
     }
     
@@ -250,6 +255,90 @@ class ViewController: UIViewController {
         }
     }
     
+    func setupRemoteVideoView() {
+        // Creating `VideoView` programmatically
+        self.remoteView = VideoView(frame: CGRect.zero, delegate: self)
+        
+        self.view.insertSubview(self.remoteView!, at: 0)
+        
+        // `VideoView` supports scaleToFill, scaleAspectFill and scaleAspectFit
+        // scaleAspectFit is the default mode when you create `VideoView` programmatically.
+        self.remoteView!.contentMode = .scaleAspectFit;
+        
+        let centerX = NSLayoutConstraint(item: self.remoteView!,
+                                         attribute: NSLayoutConstraint.Attribute.centerX,
+                                         relatedBy: NSLayoutConstraint.Relation.equal,
+                                         toItem: self.view,
+                                         attribute: NSLayoutConstraint.Attribute.centerX,
+                                         multiplier: 1,
+                                         constant: 0);
+        self.view.addConstraint(centerX)
+        let centerY = NSLayoutConstraint(item: self.remoteView!,
+                                         attribute: NSLayoutConstraint.Attribute.centerY,
+                                         relatedBy: NSLayoutConstraint.Relation.equal,
+                                         toItem: self.view,
+                                         attribute: NSLayoutConstraint.Attribute.centerY,
+                                         multiplier: 1,
+                                         constant: 0);
+        self.view.addConstraint(centerY)
+        let width = NSLayoutConstraint(item: self.remoteView!,
+                                       attribute: NSLayoutConstraint.Attribute.width,
+                                       relatedBy: NSLayoutConstraint.Relation.equal,
+                                       toItem: self.view,
+                                       attribute: NSLayoutConstraint.Attribute.width,
+                                       multiplier: 1,
+                                       constant: 0);
+        self.view.addConstraint(width)
+        let height = NSLayoutConstraint(item: self.remoteView!,
+                                        attribute: NSLayoutConstraint.Attribute.height,
+                                        relatedBy: NSLayoutConstraint.Relation.equal,
+                                        toItem: self.view,
+                                        attribute: NSLayoutConstraint.Attribute.height,
+                                        multiplier: 1,
+                                        constant: 0);
+        self.view.addConstraint(height)
+    }
+    
+    
+    func renderRemoteParticipant(participant : RemoteParticipant) -> Bool {
+        // This example renders the first subscribed RemoteVideoTrack from the RemoteParticipant.
+        let videoPublications = participant.remoteVideoTracks
+        for publication in videoPublications {
+            if let subscribedVideoTrack = publication.remoteTrack,
+                publication.isTrackSubscribed {
+                //setupRemoteVideoView()
+                subscribedVideoTrack.addRenderer(self.remoteVideo)
+                self.remoteParticipant = participant
+                return true
+            }
+        }
+        return false
+    }
+
+    func renderRemoteParticipants(participants : Array<RemoteParticipant>) {
+        for participant in participants {
+            // Find the first renderable track.
+            if participant.remoteVideoTracks.count > 0,
+                renderRemoteParticipant(participant: participant) {
+                break
+            }
+        }
+    }
+    
+    func cleanupRemoteParticipant() {
+        if self.remoteParticipant != nil {
+            self.remoteView?.removeFromSuperview()
+            self.remoteView = nil
+            self.remoteVideo.removeFromSuperview()
+            self.remoteVideo = nil
+            self.remoteParticipant = nil
+        }
+    }
+    
+    func videoViewDimensionsDidChange(view: VideoView, dimensions: CMVideoDimensions) {
+           self.view.setNeedsLayout()
+       }
+    
 }
 
 // MARK: - ARViewDelegate -
@@ -343,5 +432,97 @@ extension ViewController: VideoSource {
         if let sink = sink {
             sink.onVideoFormatRequest(outputFormat)
         }
+    }
+}
+
+
+// MARK:- RemoteParticipantDelegate
+extension ViewController : RemoteParticipantDelegate {
+    func remoteParticipantDidPublishVideoTrack(participant: RemoteParticipant, publication: RemoteVideoTrackPublication) {
+        // Remote Participant has offered to share the video Track.
+        
+        print( "Participant \(participant.identity) published video track")
+    }
+
+    func remoteParticipantDidUnpublishVideoTrack(participant: RemoteParticipant, publication: RemoteVideoTrackPublication) {
+        // Remote Participant has stopped sharing the video Track.
+        
+        print( "Participant \(participant.identity) unpublished video track")
+    }
+    
+    func remoteParticipantDidPublishAudioTrack(participant: RemoteParticipant, publication: RemoteAudioTrackPublication) {
+        // Remote Participant has offered to share the audio Track.
+        
+        print("Participant \(participant.identity) published audio track")
+    }
+
+    func remoteParticipantDidUnpublishAudioTrack(participant: RemoteParticipant, publication: RemoteAudioTrackPublication) {
+        print("Participant \(participant.identity) unpublished audio track")
+    }
+    
+    func didSubscribeToVideoTrack(videoTrack: RemoteVideoTrack, publication: RemoteVideoTrackPublication, participant: RemoteParticipant) {
+        // The LocalParticipant is subscribed to the RemoteParticipant's video Track. Frames will begin to arrive now.
+
+        print("Subscribed to \(publication.trackName) video track for Participant \(participant.identity)")
+
+        if (self.remoteVideo == nil) {
+            _ = renderRemoteParticipant(participant: participant)
+        }
+    }
+
+    func didUnsubscribeFromVideoTrack(videoTrack: RemoteVideoTrack, publication: RemoteVideoTrackPublication, participant: RemoteParticipant) {
+        // We are unsubscribed from the remote Participant's video Track. We will no longer receive the
+        // remote Participant's video.
+
+        print("Unsubscribed from \(publication.trackName) video track for Participant \(participant.identity)")
+
+        if self.remoteParticipant == participant {
+            cleanupRemoteParticipant()
+
+            // Find another Participant video to render, if possible.
+            if var remainingParticipants = room?.remoteParticipants,
+                let index = remainingParticipants.index(of: participant) {
+                remainingParticipants.remove(at: index)
+                renderRemoteParticipants(participants: remainingParticipants)
+            }
+        }
+    }
+
+    func didSubscribeToAudioTrack(audioTrack: RemoteAudioTrack, publication: RemoteAudioTrackPublication, participant: RemoteParticipant) {
+        // We are subscribed to the remote Participant's audio Track. We will start receiving the
+        // remote Participant's audio now.
+        
+        print("Subscribed to audio track for Participant \(participant.identity)")
+    }
+    
+    func didUnsubscribeFromAudioTrack(audioTrack: RemoteAudioTrack, publication: RemoteAudioTrackPublication, participant: RemoteParticipant) {
+        // We are unsubscribed from the remote Participant's audio Track. We will no longer receive the
+        // remote Participant's audio.
+        
+        print("Unsubscribed from audio track for Participant \(participant.identity)")
+    }
+    
+    func remoteParticipantDidEnableVideoTrack(participant: RemoteParticipant, publication: RemoteVideoTrackPublication) {
+        print( "Participant \(participant.identity) enabled video track")
+    }
+    
+    func remoteParticipantDidDisableVideoTrack(participant: RemoteParticipant, publication: RemoteVideoTrackPublication) {
+        print("Participant \(participant.identity) disabled video track")
+    }
+    
+    func remoteParticipantDidEnableAudioTrack(participant: RemoteParticipant, publication: RemoteAudioTrackPublication) {
+        print("Participant \(participant.identity) enabled audio track")
+    }
+    
+    func remoteParticipantDidDisableAudioTrack(participant: RemoteParticipant, publication: RemoteAudioTrackPublication) {
+        print("Participant \(participant.identity) disabled audio track")
+    }
+
+    func didFailToSubscribeToAudioTrack(publication: RemoteAudioTrackPublication, error: Error, participant: RemoteParticipant) {
+        print("FailedToSubscribe \(publication.trackName) audio track, error = \(String(describing: error))")
+    }
+
+    func didFailToSubscribeToVideoTrack(publication: RemoteVideoTrackPublication, error: Error, participant: RemoteParticipant) {
+        print("FailedToSubscribe \(publication.trackName) video track, error = \(String(describing: error))")
     }
 }
