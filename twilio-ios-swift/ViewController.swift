@@ -43,11 +43,12 @@ class ViewController: UIViewController, VideoViewDelegate {
     private var currentMode: Mode!
     private var cameraController: CameraController!
     
-    private var accessToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiIsImN0eSI6InR3aWxpby1mcGE7dj0xIn0.eyJqdGkiOiJTS2M1ZGRiZTFhM2NkZTUzNWQwMmQ2ZGY2YzhjYzY2MTc4LTE1OTU4NDgxNjMiLCJpc3MiOiJTS2M1ZGRiZTFhM2NkZTUzNWQwMmQ2ZGY2YzhjYzY2MTc4Iiwic3ViIjoiQUNkYjQ0YzMxOTAxNjUyYmVkZTAxNDk3YjVlNDdiNWFmYiIsImV4cCI6MTU5NTg1MTc2MywiZ3JhbnRzIjp7ImlkZW50aXR5Ijoic2RhZCIsInZpZGVvIjp7InJvb20iOiJkZWVwQVIifX19.eIMD6EctQ_ZblrgqsXdnC9T_ig7Ez5hM_iztONAe2Ss"
+    private var accessToken = "TWILIO_ACCESS_TOKEN"
     private var room: Room?
     internal weak var sink: VideoSink?
     private var frame: VideoFrame?
     private var displayLink: CADisplayLink?
+    private var tokenUrl = "http://localhost:8000/token.php"
     
     private var videoTrack: LocalVideoTrack?
     private var audioTrack: LocalAudioTrack?
@@ -61,6 +62,8 @@ class ViewController: UIViewController, VideoViewDelegate {
         
         setupArView()
         setupTwilio()
+        let tap = UITapGestureRecognizer(target: self, action: #selector(ViewController.dismissKeyboard))
+        self.view.addGestureRecognizer(tap)
         
     }
     
@@ -68,19 +71,6 @@ class ViewController: UIViewController, VideoViewDelegate {
         stop()
     }
     @IBAction func connectTapped(_ sender: UIButton) {
-    }
-    @IBAction func disconnectTapped(_ sender: Any) {
-    }
-    @IBAction func micTapped(_ sender: Any) {
-    }
-    
-    // MARK: - Private Methods -
-    private func setupTwilio(){
-        
-   
-        self.micButton.isHidden = false
-        self.disconnectButton.isHidden = false
-
         
         self.videoTrack = LocalVideoTrack(source: self)
         let format = VideoFormat()
@@ -100,10 +90,41 @@ class ViewController: UIViewController, VideoViewDelegate {
             if let audioTrack = self.audioTrack {
                 builder.audioTracks = [audioTrack]
             }
-            builder.roomName = "deepAR"
+            builder.roomName = self.roomTF.text
         })
         
         self.room = TwilioVideoSDK.connect(options: options, delegate: self)
+        self.showRoomUI(inRoom: true)
+        logMessage(messageText: "Attempting to connect to room \(String(describing: self.roomTF.text))")
+        
+    }
+    
+    @IBAction func disconnectTapped(_ sender: Any) {
+        self.room?.disconnect()
+        logMessage(messageText: "Attempting to disconnect from room \(room!.name)")
+    }
+    
+    @IBAction func micTapped(_ sender: Any) {
+        if (self.audioTrack != nil) {
+            self.audioTrack?.isEnabled = !(self.audioTrack?.isEnabled)!
+            
+           
+            if (self.audioTrack?.isEnabled == true) {
+                self.micButton.setTitle("Mute", for: .normal)
+            } else {
+                self.micButton.setTitle("Unmute", for: .normal)
+            }
+        }
+    }
+    
+    // MARK: - Private Methods -
+    private func setupTwilio(){
+        
+        
+        self.micButton.isHidden = false
+        self.disconnectButton.isHidden = false
+        
+        
     }
     
     private func setupArView() {
@@ -124,9 +145,14 @@ class ViewController: UIViewController, VideoViewDelegate {
         self.micButton.isHidden = !inRoom
         self.disconnectButton.isHidden = !inRoom
         
-        // Show / hide the automatic home indicator on modern iPhones.
+       
         self.setNeedsUpdateOfHomeIndicatorAutoHidden()
     }
+    @objc private func dismissKeyboard() {
+          if (self.roomTF.isFirstResponder) {
+              self.roomTF.resignFirstResponder()
+          }
+      }
     
     
     private func start(){
@@ -191,13 +217,12 @@ class ViewController: UIViewController, VideoViewDelegate {
     }
     
     func setupRemoteVideoView() {
-        // Creating `VideoView` programmatically
+        
         self.remoteView = VideoView(frame: CGRect.zero, delegate: self)
         
         self.view.insertSubview(self.remoteView!, at: 0)
+        self.remoteView?.backgroundColor = .red
         
-        // `VideoView` supports scaleToFill, scaleAspectFill and scaleAspectFit
-        // scaleAspectFit is the default mode when you create `VideoView` programmatically.
         self.remoteView!.contentMode = .scaleAspectFit;
         
         let centerX = NSLayoutConstraint(item: self.remoteView!,
@@ -236,12 +261,12 @@ class ViewController: UIViewController, VideoViewDelegate {
     
     
     func renderRemoteParticipant(participant : RemoteParticipant) -> Bool {
-        // This example renders the first subscribed RemoteVideoTrack from the RemoteParticipant.
+        
         let videoPublications = participant.remoteVideoTracks
         for publication in videoPublications {
             if let subscribedVideoTrack = publication.remoteTrack,
                 publication.isTrackSubscribed {
-                //setupRemoteVideoView()
+                setupRemoteVideoView()
                 subscribedVideoTrack.addRenderer(self.remoteView!)
                 self.remoteParticipant = participant
                 return true
@@ -252,7 +277,7 @@ class ViewController: UIViewController, VideoViewDelegate {
     
     func renderRemoteParticipants(participants : Array<RemoteParticipant>) {
         for participant in participants {
-            // Find the first renderable track.
+        
             if participant.remoteVideoTracks.count > 0,
                 renderRemoteParticipant(participant: participant) {
                 break
@@ -323,7 +348,9 @@ extension ViewController: RoomDelegate {
         // This example only renders 1 RemoteVideoTrack at a time. Listen for all events to decide which track to render.
         for remoteParticipant in room.remoteParticipants {
             remoteParticipant.delegate = self
-        }    }
+        }
+        
+    }
     
     func roomDidFailToConnect(room: Room, error: Error) {
         print("Failed to connect to a Room: \(error).")
@@ -339,16 +366,17 @@ extension ViewController: RoomDelegate {
             self.room = nil
             self.setNeedsUpdateOfHomeIndicatorAutoHidden()
         }
+        self.showRoomUI(inRoom: false)
     }
     
-    //    func roomDidDisconnect(room: Room, error: Error?) {
-    //        logMessage(messageText: "Disconnected from room \(room.name), error = \(String(describing: error))")
-    //
-    //        self.cleanupRemoteParticipant()
-    //        self.room = nil
-    //
-    //        self.showRoomUI(inRoom: false)
-    //    }
+        func roomDidDisconnect(room: Room, error: Error?) {
+             logMessage(messageText: "Disconnected from room \(room.name), error = \(String(describing: error))")
+    
+            self.cleanupRemoteParticipant()
+            self.room = nil
+    
+            self.showRoomUI(inRoom: false)
+        }
     
     func roomIsReconnecting(room: Room, error: Error) {
         logMessage(messageText: "Reconnecting to room \(room.name), error = \(String(describing: error))")
@@ -429,7 +457,7 @@ extension ViewController : RemoteParticipantDelegate {
             
             // Find another Participant video to render, if possible.
             if var remainingParticipants = room?.remoteParticipants,
-                let index = remainingParticipants.index(of: participant) {
+                let index = remainingParticipants.firstIndex(of: participant) {
                 remainingParticipants.remove(at: index)
                 renderRemoteParticipants(participants: remainingParticipants)
             }
